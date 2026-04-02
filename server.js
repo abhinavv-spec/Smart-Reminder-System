@@ -54,8 +54,8 @@ setInterval(cleanupOldMessages, 3600000);
 // ---------------------------------------------------------
 // 3. VAPID CONFIG
 // ---------------------------------------------------------
-const publicVapidKey = 'BEn8nItzt0vdwHwkrFEm6cN7uJ1TYhGl7EnhYqKF_Pf38IhSOFwr0DPQiOJMuZaS8pfd4krHuANZjJcbrTMqK78';
-const privateVapidKey = 'eKBvrbHYBGFQRu9TZh2AUZyGbQwiUmpdv5t5CViwHvQ';
+const publicVapidKey = 'BAGe0IPsgqkIBjkFwgVeb90xfN5jRTDORV1szq0eyKNibNWsI6uoqotbTG3JclHb-e4LQITDPIT33XrXtPUVz64';
+const privateVapidKey = 'wPF8zgMh_JZuQ0ZeWxRPNfSoW9YVJQAh_ZY2ibEVU0E';
 
 if (!publicVapidKey || !privateVapidKey) {
     console.error("❌ VAPID keys missing");
