@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard - Smart Reminder System</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+<!-- NAVBAR -->
+<nav class="bg-white shadow px-6 py-4 flex justify-between items-center">
+    <h1 class="font-bold text-lg">Smart Reminder System</h1>
+    <div>
+        <span id="userDisplayName" class="mr-3 text-gray-600"></span>
+        <button onclick="logout()" class="text-red-500">Logout</button>
+    </div>
+</nav>
+
+<!-- MAIN -->
+<main class="max-w-3xl mx-auto p-6">
+
+    <div class="bg-white p-6 rounded-xl shadow mb-6">
+        <h2 class="font-bold text-lg mb-4">Broadcast Message</h2>
+
+        <textarea id="messageContent"
+            placeholder="Enter message..."
+            class="w-full p-3 border rounded-lg mb-4"></textarea>
+
+        <button id="sendBtn" onclick="sendNudge()"
+            class="bg-blue-600 text-white px-6 py-2 rounded-lg">
+            Send to ALL Users
+        </button>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl shadow">
+        <h2 class="font-bold text-lg mb-4">Recent Messages</h2>
+        <div id="messageHistory">Loading...</div>
+    </div>
+
+</main>
+
+<!-- 🔥 CENTER POPUP -->
+<div id="popupBox" style="
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transition: 0.3s ease;
+    min-width: 250px;
+    text-align: center;
+">
+    <p id="popupText" class="text-gray-800 font-medium"></p>
+</div>
+
+<!-- 🔊 SOUND -->
+<audio id="notifSound" src="notification.mp3" preload="auto"></audio>
+
+<script>
+
+// 🔥 ENABLE SOUND AFTER FIRST USER INTERACTION
+document.body.addEventListener('click', () => {
+    const sound = document.getElementById('notifSound');
+    sound.play().then(() => sound.pause()).catch(()=>{});
+}, { once: true });
+
+// 🔥 LISTEN FROM SERVICE WORKER
+navigator.serviceWorker.addEventListener('message', event => {
+    showPopup(event.data.body);
+});
+
+// 🔐 Check login
+window.onload = () => {
+    const name = localStorage.getItem('userName');
+
+    if (!name) {
+        window.location.href = 'login.html';
+    } else {
+        document.getElementById('userDisplayName').innerText = name;
+        loadHistory();
+    }
+};
+
+// 🚀 Send broadcast
+async function sendNudge() {
+    const btn = document.getElementById('sendBtn');
+    const message = document.getElementById('messageContent').value.trim();
+
+    if (!message) {
+        alert("Enter message");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Sending...";
+
+    try {
+        const response = await fetch('/api/send-nudge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`Sent to ${data.delivered}/${data.total} users`);
+            document.getElementById('messageContent').value = '';
+            loadHistory();
+        } else {
+            alert(data.error || "Error sending message");
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Network error");
+    }
+
+    btn.disabled = false;
+    btn.innerText = "Send to ALL Users";
+}
+
+// 📜 Load history
+async function loadHistory() {
+    const container = document.getElementById('messageHistory');
+
+    try {
+        const res = await fetch('/api/history');
+        const logs = await res.json();
+
+        if (!logs.length) {
+            container.innerHTML = "<p class='text-gray-400'>No messages yet</p>";
+            return;
+        }
+
+        container.innerHTML = logs.map(log => `
+            <div class="border p-3 rounded mb-2">
+                <p>${log.content}</p>
+                <small class="text-gray-400">${new Date(log.timestamp).toLocaleString()}</small>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = "<p class='text-red-500'>Failed to load messages</p>";
+    }
+}
+
+// 🚪 Logout
+function logout() {
+    localStorage.clear();
+    window.location.href = 'login.html';
+}
+
+// 🔥 POPUP + SOUND
+function showPopup(message) {
+    const box = document.getElementById('popupBox');
+    const text = document.getElementById('popupText');
+    const sound = document.getElementById('notifSound');
+
+    text.innerText = message;
+
+    // 🔊 Play sound
+    sound.currentTime = 0;
+    sound.play().catch(() => {
+        console.log("Sound blocked until interaction");
+    });
+
+    // 📳 Optional vibration (mobile)
+    if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+    }
+
+    // 🎯 Show popup
+    box.style.transform = "translate(-50%, -50%) scale(1)";
+
+    setTimeout(() => {
+        box.style.transform = "translate(-50%, -50%) scale(0)";
+    }, 3000);
+}
+
+</script>
+
+</body>
+</html>

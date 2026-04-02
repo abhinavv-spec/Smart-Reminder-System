@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Register - Smart Reminder System</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: "#f7fafc",
+                        primary: "#003461",
+                        surface: "#ffffff"
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-background min-h-screen flex items-center justify-center">
+
+<div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
+
+    <h2 class="text-2xl font-bold mb-6">Smart Reminder System</h2>
+
+    <form id="registrationForm" class="space-y-4">
+
+        <input id="fullname" type="text" placeholder="Full Name"
+            class="w-full p-3 border rounded-lg" required/>
+
+        <input id="email" type="email" placeholder="Email"
+            class="w-full p-3 border rounded-lg" required/>
+
+        <input id="password" type="password" placeholder="Password"
+            class="w-full p-3 border rounded-lg" required/>
+
+        <button class="w-full bg-blue-600 text-white py-3 rounded-lg">
+            Sign Up
+        </button>
+    </form>
+
+    <p class="mt-4 text-sm">
+        Already have an account?
+        <a href="login.html" class="text-blue-600 font-bold">Login</a>
+    </p>
+
+</div>
+
+<script>
+const publicVapidKey = 'YOUR_KEY';
+
+document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerText = "Creating...";
+
+    const name = document.getElementById('fullname').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    try {
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            alert("Use HTTPS or localhost");
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert("Please allow notifications");
+            return;
+        }
+
+        if (!('serviceWorker' in navigator)) {
+            alert("Service Worker not supported");
+            return;
+        }
+
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        const sw = await navigator.serviceWorker.ready;
+
+        let subscription = await sw.pushManager.getSubscription();
+
+        if (!subscription) {
+            subscription = await sw.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+            });
+        }
+
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            body: JSON.stringify({ name, email, password, subscription }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.ok) {
+            alert("Registered successfully!");
+            window.location.href = 'login.html';
+        } else {
+            const data = await response.json();
+            alert(data.error);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+    }
+
+    btn.disabled = false;
+    btn.innerText = "Sign Up";
+});
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+</script>
+
+</body>
+</html>

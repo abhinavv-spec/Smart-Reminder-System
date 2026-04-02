@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Login - Smart Reminder System</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#003461",
+                        "primary-container": "#004b87",
+                        "on-primary": "#ffffff",
+                        "background": "#f7fafc",
+                        "surface-container-low": "#f1f4f6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#27609d",
+                        "on-surface": "#181c1e",
+                        "on-surface-variant": "#424750",
+                        "outline": "#727781"
+                    },
+                    fontFamily: { "headline": ["Manrope"], "body": ["Inter"] }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-background text-on-surface min-h-screen flex items-center justify-center p-6">
+
+    <main class="w-full max-w-md">
+        <div class="bg-surface-container-lowest rounded-xl shadow-xl p-10 border border-gray-100">
+
+            <h1 class="text-3xl font-bold mb-6">Smart Reminder System</h1>
+
+            <form id="loginForm" class="space-y-6">
+
+                <input id="email" type="email" placeholder="Email"
+                    class="w-full p-3 rounded-lg bg-surface-container-low" required/>
+
+                <input id="password" type="password" placeholder="Password"
+                    class="w-full p-3 rounded-lg bg-surface-container-low" required/>
+
+                <button class="w-full bg-primary text-white py-3 rounded-lg">
+                    Login
+                </button>
+
+            </form>
+
+            <p class="mt-6 text-sm">
+                Don't have an account?
+                <a href="index.html" class="text-primary font-bold">Sign Up</a>
+            </p>
+
+        </div>
+    </main>
+
+<script>
+const VAPID_KEY = 'YOUR_KEY';
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerText = "Logging in...";
+
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    try {
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            alert("Use HTTPS or localhost.");
+            return;
+        }
+
+        if (!('serviceWorker' in navigator)) {
+            alert("Service Worker not supported");
+            return;
+        }
+
+        let permission = Notification.permission;
+        if (permission !== 'granted') {
+            permission = await Notification.requestPermission();
+        }
+
+        if (permission !== 'granted') {
+            alert("Allow notifications to continue.");
+            return;
+        }
+
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        const sw = await navigator.serviceWorker.ready;
+
+        let subscription = await sw.pushManager.getSubscription();
+
+        if (!subscription) {
+            subscription = await sw.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_KEY)
+            });
+        }
+
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password, subscription }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            localStorage.setItem('userName', data.name);
+            alert("Welcome " + data.name);
+            window.location.href = 'dashboard.html';
+        } else {
+            alert("Error: " + data.error);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+    }
+
+    btn.disabled = false;
+    btn.innerText = "Login";
+});
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+</script>
+
+</body>
+</html>
